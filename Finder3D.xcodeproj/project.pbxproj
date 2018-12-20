@@ -102,15 +102,12 @@
 		44715FD421C5789700A537C4 /* Finder3D */ = {
 			isa = PBXGroup;
 			children = (
-				44715FD521C5789700A537C4 /* AppDelegate.swift */,
-				44715FD721C5789700A537C4 /* GameViewController.swift */,
+				4471600921CB2F8800A537C4 /* source code */,
 				44715FD921C5789700A537C4 /* art.scnassets */,
 				44715FDB21C5789A00A537C4 /* Assets.xcassets */,
 				44715FDD21C5789A00A537C4 /* Main.storyboard */,
 				44715FE021C5789A00A537C4 /* Info.plist */,
 				44715FE121C5789A00A537C4 /* Finder3D.entitlements */,
-				4471600521C89CAA00A537C4 /* FileIcon.swift */,
-				4471600721CB0D1800A537C4 /* KeyboardKeyCodes.swift */,
 			);
 			path = Finder3D;
 			sourceTree = "<group>";
@@ -131,6 +128,17 @@
 				44715FF721C5789A00A537C4 /* Info.plist */,
 			);
 			path = Finder3DUITests;
+			sourceTree = "<group>";
+		};
+		4471600921CB2F8800A537C4 /* source code */ = {
+			isa = PBXGroup;
+			children = (
+				4471600721CB0D1800A537C4 /* KeyboardKeyCodes.swift */,
+				4471600521C89CAA00A537C4 /* FileIcon.swift */,
+				44715FD721C5789700A537C4 /* GameViewController.swift */,
+				44715FD521C5789700A537C4 /* AppDelegate.swift */,
+			);
+			path = "source code";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

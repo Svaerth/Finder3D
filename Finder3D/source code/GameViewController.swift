@@ -11,12 +11,11 @@ import QuartzCore
 
 class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
 
-    //MARK: CONSTANTS
+    //MARK: constants
     let ROW_SIZE = 10
     let ICON_SPACING = 15
     let ICON_HIGHLIGHT_OPACITY:CGFloat = 0.3
     let INITIAL_DISTANCE_FROM_CAMERA = 50
-    let MAX_FILENAME_LENGTH = 15
     let INTERACTION_DISTANCE:Float = 10
     
     //MARK: keyboard variables
@@ -31,37 +30,22 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
     var speed:Float = 0
     var rotation:Float = 0
     
+    //MARK: scene object variables
     var camera:SCNNode! = nil
     var scene:SCNScene! = nil
     var scnView:SCNView! = nil
-    
-    let fileIconScene = SCNScene(named: "art.scnassets/fileIcon.scn")!
-    var fileIconNode:SCNNode! = nil
     
     //MARK: Directory variables
     var currentDirectoryPath:String = ""
     var fileIcons:[FileIcon] = []
     
-    
-    
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        fileIconNode = fileIconScene.rootNode.childNode(withName: "FileIcon", recursively: true)!
         
         setupScene()
         camera = scene.rootNode.childNode(withName: "camera", recursively: true)
         open(directory: NSHomeDirectory())
         
-        
-    }
-    
-    func getTruncatedVersionOf(_ string:String) -> String{
-        
-        let nsString = string as NSString
-        var truncatedString = nsString.substring(to: MAX_FILENAME_LENGTH - 3)
-        truncatedString += "..."
-        return truncatedString
         
     }
     
@@ -86,51 +70,19 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
                     var n:Int = 0
                     for file in filesInCurrentDirectory{
                         
-                        //loading the node
-                        let fileIconNodeClone = self.fileIconNode.clone()
+                        //create new file icon
+                        let newFileIconPosition = self.getPositionForFileIconAt(positionInLine: n, withTotalFilesToShow: filesInCurrentDirectory.count)
+                        let newFileIcon = FileIcon(fileName:file, directoryPath:self.currentDirectoryPath, x:newFileIconPosition.x, y:newFileIconPosition.y, z:newFileIconPosition.z)
                         
-                        self.scene.rootNode.addChildNode(fileIconNodeClone)
-                        
-                        self.fileIcons.append(FileIcon(name:file,node:fileIconNodeClone))
-                        
-                        //setting the position
-                        if filesInCurrentDirectory.count >= 10{
-                            fileIconNodeClone.simdPosition.x = Float(n % self.ROW_SIZE * self.ICON_SPACING) - Float(self.ICON_SPACING * (self.ROW_SIZE/2))
-                        }else{
-                            fileIconNodeClone.simdPosition.x = Float( -1 * ( (filesInCurrentDirectory.count-1) * self.ICON_SPACING)/2 + n * self.ICON_SPACING)
-                        }
-                        fileIconNodeClone.simdPosition.z = -1 * Float(n / self.ROW_SIZE * self.ICON_SPACING) - Float(self.INITIAL_DISTANCE_FROM_CAMERA)
-                        fileIconNodeClone.simdPosition.y = self.camera.simdPosition.y
-                        
-                        //setting the file icon
-                        if let iconNode = fileIconNodeClone.childNode(withName: "Icon", recursively: true){
-                            let iconImage = NSWorkspace.shared.icon(forFile: self.currentDirectoryPath+"/"+file)
-                            iconNode.geometry = iconNode.geometry?.copy() as? SCNGeometry
-                            iconNode.geometry?.firstMaterial = iconNode.geometry?.firstMaterial?.copy() as? SCNMaterial
-                            iconNode.geometry?.firstMaterial?.diffuse.contents = iconImage
-                            iconNode.geometry?.firstMaterial?.emission.contents = iconImage
-                        }
-                        
-                        //setting the filename
-                        if let labelNode = fileIconNodeClone.childNode(withName: "Label", recursively: true), let text = labelNode.geometry?.copy() as? SCNText{
-                            labelNode.geometry = text
-                            if file.count > self.MAX_FILENAME_LENGTH{
-                                text.string = self.getTruncatedVersionOf(file)
-                            }else{
-                                text.string = file
-                            }
-                        }
-                        
-                        //hiding the highlight box
-                        if let highlightNode = fileIconNodeClone.childNode(withName: "Highlight", recursively: true){
-                            highlightNode.opacity = 0
-                        }
+                        //add new file icon to the scene and the list of file icons
+                        self.scene.rootNode.addChildNode(newFileIcon.node)
+                        self.fileIcons.append(newFileIcon)
                         
                         n += 1
                     }
                 }
                 catch let error as NSError {
-                    print("Ooops! Something went wrong: \(error)")
+                    print("Ooops! Something went wrong while loading directory \(self.currentDirectoryPath): \(error)")
                 }
                 
                 self.resetCamera()
@@ -140,6 +92,23 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
             }
             
         }
+        
+    }
+    
+    func getPositionForFileIconAt(positionInLine:Int, withTotalFilesToShow totalFilesToShow:Int) -> (x:Float, y:Float, z:Float){
+        
+        var x:Float = 0
+        var y:Float = 0
+        var z:Float = 0
+        if totalFilesToShow >= 10{
+            x = Float(positionInLine % self.ROW_SIZE * self.ICON_SPACING) - Float(self.ICON_SPACING * (self.ROW_SIZE/2))
+        }else{
+            x = Float( -1 * ( (totalFilesToShow-1) * self.ICON_SPACING)/2 + positionInLine * self.ICON_SPACING)
+        }
+        z = -1 * Float(positionInLine / self.ROW_SIZE * self.ICON_SPACING) - Float(self.INITIAL_DISTANCE_FROM_CAMERA)
+        y = self.camera.simdPosition.y
+        
+        return (x:x,y:y,z:z)
         
     }
     
@@ -198,18 +167,12 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
     }
     
     func goToParentDirectory(){
-        
-        let currentDirectoryNSString = currentDirectoryPath as NSString
-        if let urlFriendlyDirectoryPath = currentDirectoryNSString.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlPathAllowed), let currentDirectoryURL = URL(string: urlFriendlyDirectoryPath){
-            let parentDirectoryURL = currentDirectoryURL.deletingLastPathComponent()
-            let parentDirectory = parentDirectoryURL.path
-        
-            //if the parent directory points to an actual directory
-            var isDirectory:ObjCBool = ObjCBool(false)
-            if FileManager.default.fileExists(atPath: parentDirectory, isDirectory: &isDirectory) && isDirectory.boolValue == true{
-                open(directory: parentDirectory)
-            }
-        
+    
+        //if the parent directory points to an actual directory
+        let parentDirectory = (currentDirectoryPath as NSString).deletingLastPathComponent
+        var isDirectory:ObjCBool = ObjCBool(false)
+        if FileManager.default.fileExists(atPath: parentDirectory, isDirectory: &isDirectory) && isDirectory.boolValue == true{
+            open(directory: parentDirectory)
         }
             
     }
@@ -261,14 +224,6 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
             backSpacePressed = false
             goToParentDirectory()
         }
-        
-    }
-    
-    func make(_ node2Rotate:SCNNode, faceTowards targetNode:SCNNode){
-        
-        let deltaX = targetNode.simdPosition.x - node2Rotate.simdPosition.x
-        let deltaZ = targetNode.simdPosition.z - node2Rotate.simdPosition.z
-        node2Rotate.eulerAngles.y = atan2(CGFloat(deltaX), CGFloat(deltaZ))
         
     }
     
