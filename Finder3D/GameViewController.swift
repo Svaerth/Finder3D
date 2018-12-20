@@ -11,13 +11,15 @@ import QuartzCore
 
 class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
 
-    let leftArrowKeyCode : UInt16 = 0x7B
-    let rightArrowKeyCode : UInt16 = 0x7C
-    let downArrowKeyCode : UInt16 = 0x7D
-    let upArrowKeyCode : UInt16 = 0x7E
-    let spaceBarKeyCode : UInt16 = 49
-    let backSpaceKeyCode : UInt16 = 51
+    //MARK: CONSTANTS
+    let ROW_SIZE = 10
+    let ICON_SPACING = 15
+    let ICON_HIGHLIGHT_OPACITY:CGFloat = 0.3
+    let INITIAL_DISTANCE_FROM_CAMERA = 50
+    let MAX_FILENAME_LENGTH = 15
+    let INTERACTION_DISTANCE:Float = 10
     
+    //MARK: keyboard variables
     var upArrowPressed:Bool = false
     var downArrowPressed:Bool = false
     var leftArrowPressed:Bool = false
@@ -25,6 +27,7 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
     var spaceBarPressed:Bool = false
     var backSpacePressed:Bool = false
     
+    //MARK: movement variables
     var speed:Float = 0
     var rotation:Float = 0
     
@@ -35,15 +38,11 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
     let fileIconScene = SCNScene(named: "art.scnassets/fileIcon.scn")!
     var fileIconNode:SCNNode! = nil
     
+    //MARK: Directory variables
     var currentDirectoryPath:String = ""
     var fileIcons:[FileIcon] = []
     
-    let ROW_SIZE = 10
-    let ICON_SPACING = 15
-    let ICON_HIGHLIGHT_OPACITY:CGFloat = 0.3
-    let INITIAL_DISTANCE_FROM_CAMERA = 50
-    let MAX_FILENAME_LENGTH = 15
-    let INTERACTION_DISTANCE:Float = 10
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -308,17 +307,17 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
     override func keyDown(with event: NSEvent){
         
         switch(event.keyCode){
-        case leftArrowKeyCode:
+        case LEFT_ARROW_KEY_CODE:
             leftArrowPressed = true
-        case rightArrowKeyCode:
+        case RIGHT_ARROW_KEY_CODE:
             rightArrowPressed = true
-        case upArrowKeyCode:
+        case UP_ARROW_KEY_CODE:
             upArrowPressed = true
-        case downArrowKeyCode:
+        case DOWN_ARROW_KEY_CODE:
             downArrowPressed = true
-        case spaceBarKeyCode:
+        case SPACE_BAR_KEY_CODE:
             spaceBarPressed = true
-        case backSpaceKeyCode:
+        case BACKSPACE_KEY_CODE:
             backSpacePressed = true
         default:
             break
@@ -329,13 +328,13 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
     override func keyUp(with event: NSEvent){
         
         switch(event.keyCode){
-        case leftArrowKeyCode:
+        case LEFT_ARROW_KEY_CODE:
             leftArrowPressed = false
-        case rightArrowKeyCode:
+        case RIGHT_ARROW_KEY_CODE:
             rightArrowPressed = false
-        case upArrowKeyCode:
+        case UP_ARROW_KEY_CODE:
             upArrowPressed = false
-        case downArrowKeyCode:
+        case DOWN_ARROW_KEY_CODE:
             downArrowPressed = false
         default:
             break
