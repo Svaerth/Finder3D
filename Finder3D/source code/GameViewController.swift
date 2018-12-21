@@ -12,10 +12,11 @@ import QuartzCore
 class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
 
     //MARK: constants
-    let ROW_SIZE = 10
-    let ICON_SPACING = 15
+    let MAX_ICONS_IN_ROW = 10
+    let SPACE_BETWEEN_ROWS = 15
+    let SPACE_BETWEEN_COLUMNS = 15
     let ICON_HIGHLIGHT_OPACITY:CGFloat = 0.3
-    let INITIAL_DISTANCE_FROM_CAMERA = 50
+    let INITIAL_DISTANCE_FROM_CAMERA:Float = 50
     let INTERACTION_DISTANCE:Float = 10
     
     //MARK: keyboard variables
@@ -39,26 +40,33 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
     var currentDirectoryPath:String = ""
     var fileIcons:[FileIcon] = []
     
+    //MARK: Loading Screen
+    var loadingScreen:LoadingScreen! = nil
+    
+    //MARK: Methods
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        loadingScreen = LoadingScreen(frame: self.view.bounds)
         setupScene()
-        camera = scene.rootNode.childNode(withName: "camera", recursively: true)
-        open(directory: NSHomeDirectory())
-        
+        camera = getReferenceToCamera()
+        load(directory: NSHomeDirectory())
         
     }
     
-    func open(directory:String){
+    func getReferenceToCamera() -> SCNNode {
+        return scene.rootNode.childNode(withName: "camera", recursively: true)!
+    }
+    
+    func load(directory newDirectory:String){
         
-        DispatchQueue.main.async{
-        
-            self.showLoadingGraphic()
+        loadingScreen.show(inView: self.view, withCompletion:{
             
             //loading new directory on background thread
             DispatchQueue.global(qos: .userInitiated).async{
-            
-                self.currentDirectoryPath = directory
+                
+                self.currentDirectoryPath = newDirectory
                 
                 self.removeFileNodesFromScene()
                 
@@ -66,80 +74,92 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
                 
                 do {
                     let filesInCurrentDirectory = try FileManager.default.contentsOfDirectory(atPath: self.currentDirectoryPath)
-                    
-                    var n:Int = 0
-                    for file in filesInCurrentDirectory{
-                        
-                        //create new file icon
-                        let newFileIconPosition = self.getPositionForFileIconAt(positionInLine: n, withTotalFilesToShow: filesInCurrentDirectory.count)
-                        let newFileIcon = FileIcon(fileName:file, directoryPath:self.currentDirectoryPath, x:newFileIconPosition.x, y:newFileIconPosition.y, z:newFileIconPosition.z)
-                        
-                        //add new file icon to the scene and the list of file icons
-                        self.scene.rootNode.addChildNode(newFileIcon.node)
-                        self.fileIcons.append(newFileIcon)
-                        
-                        n += 1
-                    }
+                    self.fileIcons = self.createFileIconsFor(files: filesInCurrentDirectory)
+                    self.addFileIconsToScene(fileIcons: self.fileIcons)
                 }
                 catch let error as NSError {
-                    print("Ooops! Something went wrong while loading directory \(self.currentDirectoryPath): \(error)")
+                    self.show(error: error, forLoadingDirectory: self.currentDirectoryPath)
                 }
                 
                 self.resetCamera()
                 
-                self.removeLoadingGraphic()
+                self.loadingScreen.hide()
                 
             }
             
-        }
+        })
         
     }
     
-    func getPositionForFileIconAt(positionInLine:Int, withTotalFilesToShow totalFilesToShow:Int) -> (x:Float, y:Float, z:Float){
+    func show(error: NSError, forLoadingDirectory directory:String){
+        let alert = NSAlert()
+        alert.messageText = "Directory Load Error"
+        alert.informativeText = "Ooops! Something went wrong while loading directory \(directory): \(error)"
+        alert.runModal()
+    }
+    
+    func createFileIconsFor(files:[String]) -> [FileIcon]{
+        
+        var fileIcons:[FileIcon] = []
+        var i:Int = 0
+        for file in files{
+            
+            let newFileIconPosition = self.calculatePositionForFileIconAt(positionInLine: i, withTotalFilesToShow: files.count)
+            let newFileIcon = FileIcon(fileName:file, directoryPath:self.currentDirectoryPath, x:newFileIconPosition.x, y:newFileIconPosition.y, z:newFileIconPosition.z)
+            fileIcons.append(newFileIcon)
+            
+            i += 1
+            
+        }
+        
+        return fileIcons
+        
+    }
+    
+    func addFileIconsToScene(fileIcons:[FileIcon]){
+        for fileIcon in fileIcons{
+            self.scene.rootNode.addChildNode(fileIcon.node)
+        }
+    }
+    
+    func calculatePositionForFileIconAt(positionInLine:Int, withTotalFilesToShow totalFilesToShow:Int) -> (x:Float, y:Float, z:Float){
         
         var x:Float = 0
         var y:Float = 0
         var z:Float = 0
-        if totalFilesToShow >= 10{
-            x = Float(positionInLine % self.ROW_SIZE * self.ICON_SPACING) - Float(self.ICON_SPACING * (self.ROW_SIZE/2))
-        }else{
-            x = Float( -1 * ( (totalFilesToShow-1) * self.ICON_SPACING)/2 + positionInLine * self.ICON_SPACING)
+        
+        //when there are a number of files greater than or equal to ROW_SIZE we arrange them in rows of length equal to ROW_SIZE
+        if totalFilesToShow >= MAX_ICONS_IN_ROW{
+            
+            //calculate x position
+            let leftMostPosition = -1 * Float(self.SPACE_BETWEEN_COLUMNS * (self.MAX_ICONS_IN_ROW/2))
+            let column = positionInLine % self.MAX_ICONS_IN_ROW
+            let spaceFromLeft = Float(column * self.SPACE_BETWEEN_COLUMNS)
+            x = leftMostPosition + spaceFromLeft
+            
+            //calculate z position
+            let row = positionInLine / self.MAX_ICONS_IN_ROW
+            let distanceFromCamera = self.INITIAL_DISTANCE_FROM_CAMERA + Float(row * self.SPACE_BETWEEN_ROWS)
+            z = -1 * distanceFromCamera
+            
         }
-        z = -1 * Float(positionInLine / self.ROW_SIZE * self.ICON_SPACING) - Float(self.INITIAL_DISTANCE_FROM_CAMERA)
+        //when there are fewer than ROW_SIZE files to show, we make one row and center it in front of the user
+        else{
+            
+            //calculate x position
+            let rowWidth = (totalFilesToShow-1) * self.SPACE_BETWEEN_COLUMNS
+            let leftMostPosition = -1 * rowWidth/2
+            let spaceFromLeft = positionInLine * self.SPACE_BETWEEN_COLUMNS
+            x = Float(leftMostPosition + spaceFromLeft)
+            
+            z = -1 * self.INITIAL_DISTANCE_FROM_CAMERA
+            
+        }
+        
         y = self.camera.simdPosition.y
         
         return (x:x,y:y,z:z)
         
-    }
-    
-    var loadingView:NSView? = nil
-    
-    func showLoadingGraphic(){
-        
-        scnView.isPlaying = false
-        
-        if loadingView == nil{
-            loadingView = NSView(frame: self.view.bounds)
-            loadingView?.layer = CALayer()
-            loadingView?.layer?.backgroundColor = CGColor.init(red: 0, green: 0, blue: 0, alpha: 0.7)
-            loadingView?.isHidden = false
-            let loadingText = NSTextView(frame: NSRect(x: 0, y: loadingView!.bounds.size.height/2-40, width: loadingView!.bounds.size.width, height: 100))
-            loadingText.backgroundColor = NSColor.clear
-            loadingText.textColor = NSColor.white
-            loadingText.string = "Loading..."
-            loadingText.font = NSFont(name: "Courier New", size: 80)
-            loadingText.alignCenter(self)
-            loadingView?.addSubview(loadingText)
-        }
-        self.view.addSubview(self.loadingView!)
-        
-    }
-    
-    func removeLoadingGraphic(){
-        DispatchQueue.main.async {
-            self.loadingView?.removeFromSuperview()
-            self.scnView.isPlaying = true
-        }
     }
     
     func removeFileNodesFromScene(){
@@ -163,7 +183,6 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
         scnView.delegate = self
         scnView.loops = true
         scnView.isPlaying = true
-        
     }
     
     func goToParentDirectory(){
@@ -172,7 +191,7 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
         let parentDirectory = (currentDirectoryPath as NSString).deletingLastPathComponent
         var isDirectory:ObjCBool = ObjCBool(false)
         if FileManager.default.fileExists(atPath: parentDirectory, isDirectory: &isDirectory) && isDirectory.boolValue == true{
-            open(directory: parentDirectory)
+            load(directory: parentDirectory)
         }
             
     }
@@ -213,7 +232,7 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
                 var isDirectory:ObjCBool = ObjCBool(false)
                 _ = FileManager.default.fileExists(atPath: filePath, isDirectory: &isDirectory)
                 if isDirectory.boolValue == true{
-                    open(directory:filePath)
+                    load(directory:filePath)
                 }else{
                     NSWorkspace.shared.openFile(filePath)
                 }

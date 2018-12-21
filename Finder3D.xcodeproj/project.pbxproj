@@ -16,6 +16,7 @@
 		44715FF621C5789A00A537C4 /* Finder3DUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44715FF521C5789A00A537C4 /* Finder3DUITests.swift */; };
 		4471600621C89CAA00A537C4 /* FileIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4471600521C89CAA00A537C4 /* FileIcon.swift */; };
 		4471600821CB0D1800A537C4 /* KeyboardKeyCodes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4471600721CB0D1800A537C4 /* KeyboardKeyCodes.swift */; };
+		4471600B21CC9B0A00A537C4 /* LoadingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4471600A21CC9B0A00A537C4 /* LoadingScreen.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +53,7 @@
 		44715FF721C5789A00A537C4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		4471600521C89CAA00A537C4 /* FileIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileIcon.swift; sourceTree = "<group>"; };
 		4471600721CB0D1800A537C4 /* KeyboardKeyCodes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardKeyCodes.swift; sourceTree = "<group>"; };
+		4471600A21CC9B0A00A537C4 /* LoadingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,6 +139,7 @@
 				4471600521C89CAA00A537C4 /* FileIcon.swift */,
 				44715FD721C5789700A537C4 /* GameViewController.swift */,
 				44715FD521C5789700A537C4 /* AppDelegate.swift */,
+				4471600A21CC9B0A00A537C4 /* LoadingScreen.swift */,
 			);
 			path = "source code";
 			sourceTree = "<group>";
@@ -277,6 +280,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4471600B21CC9B0A00A537C4 /* LoadingScreen.swift in Sources */,
 				4471600621C89CAA00A537C4 /* FileIcon.swift in Sources */,
 				4471600821CB0D1800A537C4 /* KeyboardKeyCodes.swift in Sources */,
 				44715FD821C5789700A537C4 /* GameViewController.swift in Sources */,
