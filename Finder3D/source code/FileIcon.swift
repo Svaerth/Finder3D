@@ -11,7 +11,9 @@ import SceneKit
 
 class FileIcon{
     
+    //MARK: constants
     let MAX_FILENAME_LENGTH:Int = 15
+    let ICON_HIGHLIGHT_OPACITY:CGFloat = 0.3
     
     //the file icon node that all file icon nodes will be created from
     private static let prototypeFileIconNode:SCNNode = SCNScene(named: "art.scnassets/fileIcon.scn")!.rootNode.childNode(withName: "FileIcon", recursively: true)!
@@ -30,13 +32,13 @@ class FileIcon{
         
     }
     
-    func setPosition(x:Float, y:Float, z:Float){
+    private func setPosition(x:Float, y:Float, z:Float){
         node.simdPosition.x = x
         node.simdPosition.y = y
         node.simdPosition.z = z
     }
     
-    func setImageToIconOfFileAt(path filePath:String){
+    private func setImageToIconOfFileAt(path filePath:String){
         
         if let iconNode = node.childNode(withName: "Icon", recursively: true){
             let iconImage = NSWorkspace.shared.icon(forFile: filePath)
@@ -48,7 +50,7 @@ class FileIcon{
         
     }
     
-    func setFileIconName(){
+    private func setFileIconName(){
         
         if let labelNode = node.childNode(withName: "Label", recursively: true), let text = labelNode.geometry?.copy() as? SCNText{
             labelNode.geometry = text
@@ -61,7 +63,7 @@ class FileIcon{
         
     }
     
-    func getTruncatedVersionOf(_ string:String, maxLength:Int) -> String{
+    private func getTruncatedVersionOf(_ string:String, maxLength:Int) -> String{
         
         let nsString = string as NSString
         var truncatedString = nsString.substring(to: maxLength - 3)
@@ -70,9 +72,17 @@ class FileIcon{
         
     }
     
+    func showHighlight(){
+        setHighlightOpacity(to:ICON_HIGHLIGHT_OPACITY)
+    }
+    
     func hideHighlight(){
-        if let highlightNode = node.childNode(withName: "Highlight", recursively: true){
-            highlightNode.opacity = 0
+        setHighlightOpacity(to: 0)
+    }
+    
+    func setHighlightOpacity(to opacity:CGFloat){
+        if let highlight = node.childNode(withName: "Highlight", recursively: true){
+            highlight.opacity = opacity
         }
     }
     

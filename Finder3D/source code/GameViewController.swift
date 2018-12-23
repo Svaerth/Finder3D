@@ -15,9 +15,10 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
     let MAX_ICONS_IN_ROW = 10
     let SPACE_BETWEEN_ROWS = 15
     let SPACE_BETWEEN_COLUMNS = 15
-    let ICON_HIGHLIGHT_OPACITY:CGFloat = 0.3
     let INITIAL_DISTANCE_FROM_CAMERA:Float = 50
     let INTERACTION_DISTANCE:Float = 10
+    let MAX_MOVEMENT_SPEED:Float = 0.6
+    let ROTATION_PER_FRAME_RADIANS:Float = 0.05
     
     //MARK: keyboard variables
     var upArrowPressed:Bool = false
@@ -28,13 +29,12 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
     var backSpacePressed:Bool = false
     
     //MARK: movement variables
-    var speed:Float = 0
+    var currentMovementSpeed:Float = 0
     var rotation:Float = 0
     
     //MARK: scene object variables
     var camera:SCNNode! = nil
     var scene:SCNScene! = nil
-    var scnView:SCNView! = nil
     
     //MARK: Directory variables
     var currentDirectoryPath:String = ""
@@ -78,7 +78,7 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
                     self.addFileIconsToScene(fileIcons: self.fileIcons)
                 }
                 catch let error as NSError {
-                    self.show(error: error, forLoadingDirectory: self.currentDirectoryPath)
+                    NSAlert.showWith(title: "Directory Load Error", message: "Ooops! Something went wrong while loading directory \(self.currentDirectoryPath): \(error)")
                 }
                 
                 self.resetCamera()
@@ -91,27 +91,16 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
         
     }
     
-    func show(error: NSError, forLoadingDirectory directory:String){
-        let alert = NSAlert()
-        alert.messageText = "Directory Load Error"
-        alert.informativeText = "Ooops! Something went wrong while loading directory \(directory): \(error)"
-        alert.runModal()
-    }
-    
     func createFileIconsFor(files:[String]) -> [FileIcon]{
         
         var fileIcons:[FileIcon] = []
-        var i:Int = 0
-        for file in files{
+        for (i,file) in files.enumerated(){
             
-            let newFileIconPosition = self.calculatePositionForFileIconAt(positionInLine: i, withTotalFilesToShow: files.count)
+            let newFileIconPosition:(x:Float,y:Float,z:Float) = self.calculatePositionForFileIconAt(positionInLine: i, withTotalFilesToShow: files.count)
             let newFileIcon = FileIcon(fileName:file, directoryPath:self.currentDirectoryPath, x:newFileIconPosition.x, y:newFileIconPosition.y, z:newFileIconPosition.z)
             fileIcons.append(newFileIcon)
             
-            i += 1
-            
         }
-        
         return fileIcons
         
     }
@@ -128,7 +117,7 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
         var y:Float = 0
         var z:Float = 0
         
-        //when there are a number of files greater than or equal to ROW_SIZE we arrange them in rows of length equal to ROW_SIZE
+        //when there are a number of files greater than or equal to MAX_ICONS_IN_ROW we arrange them in rows of length equal to MAX_ICONS_IN_ROW
         if totalFilesToShow >= MAX_ICONS_IN_ROW{
             
             //calculate x position
@@ -143,7 +132,7 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
             z = -1 * distanceFromCamera
             
         }
-        //when there are fewer than ROW_SIZE files to show, we make one row and center it in front of the user
+        //when there are fewer than MAX_ICONS_IN_ROW files to show, we make one row and center it in front of the user
         else{
             
             //calculate x position
@@ -178,11 +167,12 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
     
     func setupScene(){
         scene = SCNScene(named: "art.scnassets/main.scn")!
-        scnView = self.view as? SCNView
-        scnView.scene = scene
-        scnView.delegate = self
-        scnView.loops = true
-        scnView.isPlaying = true
+        if let scnView = self.view as? SCNView{
+            scnView.scene = scene
+            scnView.delegate = self
+            scnView.loops = true
+            scnView.isPlaying = true
+        }
     }
     
     func goToParentDirectory(){
@@ -192,6 +182,8 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
         var isDirectory:ObjCBool = ObjCBool(false)
         if FileManager.default.fileExists(atPath: parentDirectory, isDirectory: &isDirectory) && isDirectory.boolValue == true{
             load(directory: parentDirectory)
+        }else{
+            NSAlert.showWith(title: "Could Not Load Parent Directory", message: "The parent directory ,\(parentDirectory), could not be loaded because it does not exist or is not a directory")
         }
             
     }
@@ -201,80 +193,96 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
         
         processArrowKeyInput()
         
-        move()
+        moveCamera()
         
-        var selectedFileIcon:FileIcon? = nil
-        var selectedFileNodeDistance:Float = -1
+        //un-highlighting all the icons
         for fileIcon in fileIcons{
-            let deltaX = camera.simdPosition.x - fileIcon.node.simdPosition.x
-            let deltaZ = camera.simdPosition.z - fileIcon.node.simdPosition.z
-            let distance = sqrt(deltaX*deltaX + deltaZ*deltaZ)
-            if distance < INTERACTION_DISTANCE && (distance < selectedFileNodeDistance || selectedFileIcon == nil){
-                selectedFileIcon = fileIcon
-                selectedFileNodeDistance = distance
+            fileIcon.hideHighlight()
+        }
+        
+        if let closestFileIcon = getClosestFileIcon(), getDistanceBetween(node1: camera, node2: closestFileIcon.node) < INTERACTION_DISTANCE{
+                
+            closestFileIcon.showHighlight()
+            
+            if spaceBarPressed {
+                let filePath = currentDirectoryPath+"/"+closestFileIcon.name
+                loadContentAt(path: filePath)
             }
             
-            //hiding the highlight to make sure that it doesn't get left on
-            if let highlight = fileIcon.node.childNode(withName: "Highlight", recursively: true){
-                highlight.opacity = 0
-            }
-        }
-        
-        //highlighting the selected file node
-        if let highlight = selectedFileIcon?.node.childNode(withName: "Highlight", recursively: true){
-            highlight.opacity = ICON_HIGHLIGHT_OPACITY
-        }
-        
-        if spaceBarPressed {
-            spaceBarPressed = false
-            if let selectedFileName = selectedFileIcon?.name{
-                let filePath = currentDirectoryPath+"/"+selectedFileName
-                var isDirectory:ObjCBool = ObjCBool(false)
-                _ = FileManager.default.fileExists(atPath: filePath, isDirectory: &isDirectory)
-                if isDirectory.boolValue == true{
-                    load(directory:filePath)
-                }else{
-                    NSWorkspace.shared.openFile(filePath)
-                }
-            }
         }
         
         if backSpacePressed {
-            backSpacePressed = false
             goToParentDirectory()
         }
         
+        //resetting button pressed variables so that the button presses only take effect for a single frame per press
+        resetButtonPresses()
+        
+    }
+    
+    func loadContentAt(path:String){
+        var isDirectory:ObjCBool = ObjCBool(false)
+        _ = FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+        if isDirectory.boolValue == true{
+            load(directory:path)
+        }else{
+            NSWorkspace.shared.openFile(path)
+        }
+    }
+    
+    func resetButtonPresses(){
+        spaceBarPressed = false
+        backSpacePressed = false
+    }
+    
+    func getClosestFileIcon() -> FileIcon?{
+        var selectedFileIcon:FileIcon? = nil
+        var selectedFileNodeDistance:Float = -1
+        for fileIcon in fileIcons{
+            let distance = getDistanceBetween(node1: camera, node2: fileIcon.node)
+            if selectedFileIcon == nil || distance < selectedFileNodeDistance {
+                selectedFileIcon = fileIcon
+                selectedFileNodeDistance = distance
+            }
+        }
+        return selectedFileIcon
+    }
+    
+    func getDistanceBetween(node1:SCNNode, node2:SCNNode) -> Float{
+        let deltaX = node1.simdPosition.x - node2.simdPosition.x
+        let deltaZ = node1.simdPosition.z - node2.simdPosition.z
+        return sqrt(deltaX*deltaX + deltaZ*deltaZ)
     }
     
     func processArrowKeyInput(){
         
         if leftArrowPressed{
             //rotating to the left
-            camera.simdEulerAngles.y += 0.05
+            camera.simdEulerAngles.y += ROTATION_PER_FRAME_RADIANS
         }
         if rightArrowPressed{
             //rotating to the right
-            camera.simdEulerAngles.y -= 0.05
+            camera.simdEulerAngles.y -= ROTATION_PER_FRAME_RADIANS
         }
         
         if upArrowPressed && downArrowPressed{
-            speed = 0
+            currentMovementSpeed = 0
         }else if upArrowPressed{
-            speed = -0.3
+            //move forward
+            currentMovementSpeed = -MAX_MOVEMENT_SPEED
         }else if downArrowPressed{
-            speed = 0.3
+            //move backward
+            currentMovementSpeed = MAX_MOVEMENT_SPEED
         }else{
-            speed = 0
+            currentMovementSpeed = 0
         }
-        
-        move()
         
     }
     
-    func move(){
+    func moveCamera(){
         
-        camera.simdPosition.x += sin(camera.simdEulerAngles.y) * Float(speed)
-        camera.simdPosition.z += cos(camera.simdEulerAngles.y) * Float(speed)
+        camera.simdPosition.x += sin(camera.simdEulerAngles.y) * Float(currentMovementSpeed)
+        camera.simdPosition.z += cos(camera.simdEulerAngles.y) * Float(currentMovementSpeed)
         
     }
     
