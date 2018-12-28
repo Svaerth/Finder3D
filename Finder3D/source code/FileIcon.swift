@@ -21,6 +21,8 @@ class FileIcon{
     var node:SCNNode
     var name:String
     
+    //MARK: public methods
+    
     init(fileName:String, directoryPath:String, x:Float, y:Float, z:Float){
         
         name = fileName
@@ -31,6 +33,17 @@ class FileIcon{
         hideHighlight()
         
     }
+    
+    func showHighlight(){
+        setHighlightOpacity(to:ICON_HIGHLIGHT_OPACITY)
+    }
+    
+    func hideHighlight(){
+        setHighlightOpacity(to: 0)
+    }
+    
+    
+    //MARK: private methods
     
     private func setPosition(x:Float, y:Float, z:Float){
         node.simdPosition.x = x
@@ -72,15 +85,7 @@ class FileIcon{
         
     }
     
-    func showHighlight(){
-        setHighlightOpacity(to:ICON_HIGHLIGHT_OPACITY)
-    }
-    
-    func hideHighlight(){
-        setHighlightOpacity(to: 0)
-    }
-    
-    func setHighlightOpacity(to opacity:CGFloat){
+    private func setHighlightOpacity(to opacity:CGFloat){
         if let highlight = node.childNode(withName: "Highlight", recursively: true){
             highlight.opacity = opacity
         }

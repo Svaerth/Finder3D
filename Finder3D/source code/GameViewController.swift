@@ -69,19 +69,18 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
                 self.currentDirectoryPath = newDirectory
                 
                 self.removeFileNodesFromScene()
-                
-                self.fileIcons = []
+                    
+                self.resetCameraPosition()
                 
                 do {
-                    let filesInCurrentDirectory = try FileManager.default.contentsOfDirectory(atPath: self.currentDirectoryPath)
-                    self.fileIcons = self.createFileIconsFor(files: filesInCurrentDirectory)
+                    var filesInNewDirectory = try FileManager.default.contentsOfDirectory(atPath: self.currentDirectoryPath)
+                    filesInNewDirectory.sort()
+                    self.fileIcons = self.createFileIconsFor(filenames: filesInNewDirectory)
                     self.addFileIconsToScene(fileIcons: self.fileIcons)
                 }
                 catch let error as NSError {
                     NSAlert.showWith(title: "Directory Load Error", message: "Ooops! Something went wrong while loading directory \(self.currentDirectoryPath): \(error)")
                 }
-                
-                self.resetCamera()
                 
                 self.loadingScreen.hide()
                 
@@ -91,13 +90,13 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
         
     }
     
-    func createFileIconsFor(files:[String]) -> [FileIcon]{
+    func createFileIconsFor(filenames:[String]) -> [FileIcon]{
         
         var fileIcons:[FileIcon] = []
-        for (i,file) in files.enumerated(){
+        for (i,filename) in filenames.enumerated(){
             
-            let newFileIconPosition:(x:Float,y:Float,z:Float) = self.calculatePositionForFileIconAt(positionInLine: i, withTotalFilesToShow: files.count)
-            let newFileIcon = FileIcon(fileName:file, directoryPath:self.currentDirectoryPath, x:newFileIconPosition.x, y:newFileIconPosition.y, z:newFileIconPosition.z)
+            let newFileIconPosition:(x:Float,y:Float,z:Float) = self.calculatePositionForFileIconAt(positionInLine: i, withTotalFilesToShow: filenames.count)
+            let newFileIcon = FileIcon(fileName:filename, directoryPath:self.currentDirectoryPath, x:newFileIconPosition.x, y:newFileIconPosition.y, z:newFileIconPosition.z)
             fileIcons.append(newFileIcon)
             
         }
@@ -157,7 +156,7 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
         }
     }
     
-    func resetCamera(){
+    func resetCameraPosition(){
         camera.simdPosition.x = 0
         camera.simdPosition.z = 0
         camera.eulerAngles.x = 0
@@ -193,7 +192,7 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
         
         processArrowKeyInput()
         
-        moveCamera()
+        updateCameraPosition()
         
         //un-highlighting all the icons
         for fileIcon in fileIcons{
@@ -279,7 +278,7 @@ class GameViewController: NSViewController  ,  SCNSceneRendererDelegate{
         
     }
     
-    func moveCamera(){
+    func updateCameraPosition(){
         
         camera.simdPosition.x += sin(camera.simdEulerAngles.y) * Float(currentMovementSpeed)
         camera.simdPosition.z += cos(camera.simdEulerAngles.y) * Float(currentMovementSpeed)
